@@ -9,18 +9,31 @@ dotenv.config();
 const JWT_EXPIRES = "2d";
 const SALT_ROUNDS = 10;
 
+// Role constants (DB values)
+const ROLE = { USER: 1, DOCTOR: 2 };
+const roleNameFromInt = (n) => (n === ROLE.DOCTOR ? "DOCTOR" : "USER");
+
 const generateToken = (user) => {
+  // include id, uuid, numeric role and roleName
   return jwt.sign(
-    { userId: user.id, role: user.role },
+    {
+      userId: user.id,
+      uuid: user.uuid,
+      role: user.role,
+      roleName: roleNameFromInt(user.role),
+    },
     process.env.JWT_SECRET,
     { expiresIn: JWT_EXPIRES }
   );
 };
 
 const sanitizeUser = (user) => {
-  if (!user) return user;
+  if (!user) return null;
   const { password, ...rest } = user;
-  return rest;
+  return {
+    ...rest,
+    roleName: roleNameFromInt(rest.role),
+  };
 };
 
 // SIGNUP
@@ -33,7 +46,7 @@ export const signUp = async (req, res, next) => {
       phoneNumber,
       phoneCode,
       password,
-      role = "USER",
+      role = "USER",    // can be "USER"/"DOCTOR" or 1/2
       bmdcNumber,
     } = req.body;
 
@@ -51,20 +64,20 @@ export const signUp = async (req, res, next) => {
         .json({ success: false, message: "Required fields missing" });
     }
 
-    const roleUpper = String(role).toUpperCase();
-    if (!["USER", "DOCTOR"].includes(roleUpper)) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Role must be USER or DOCTOR" });
+    // Normalize role into numeric roleNumber (1 or 2)
+    let roleNumber;
+    if (typeof role === "number") {
+      roleNumber = role === ROLE.DOCTOR ? ROLE.DOCTOR : ROLE.USER;
+    } else {
+      const r = String(role).toUpperCase();
+      roleNumber = r === "DOCTOR" ? ROLE.DOCTOR : ROLE.USER;
     }
 
-    if (roleUpper === "DOCTOR" && !bmdcNumber) {
+    // If doctor ensure BMDC provided
+    if (roleNumber === ROLE.DOCTOR && !bmdcNumber) {
       return res
         .status(400)
-        .json({
-          success: false,
-          message: "BMDC number is required for doctors",
-        });
+        .json({ success: false, message: "BMDC number is required for doctors" });
     }
 
     // Check email uniqueness
@@ -75,7 +88,7 @@ export const signUp = async (req, res, next) => {
         .json({ success: false, message: "Email already registered" });
     }
 
-    // If BMDC provided, check unique
+    // Check bmdc uniqueness if provided
     if (bmdcNumber) {
       const existingBmdc = await prisma.user.findUnique({
         where: { bmdcNumber },
@@ -97,17 +110,17 @@ export const signUp = async (req, res, next) => {
         phoneNumber,
         phoneCode,
         password: hashedPassword,
-        role: roleUpper,
+        role: roleNumber,
         bmdcNumber: bmdcNumber ?? null,
-        // isDoctorVarified will default to false (0) in DB
+        // isDoctorVerified/isVerified default to false
       },
     });
 
     const token = generateToken(created);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: `${roleUpper} registered successfully`,
+      message: `${roleNameFromInt(roleNumber)} registered successfully`,
       token,
       data: sanitizeUser(created),
     });
@@ -141,7 +154,7 @@ export const login = async (req, res, next) => {
 
     const token = generateToken(user);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Login successful",
       token,

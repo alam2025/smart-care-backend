@@ -14,16 +14,17 @@ enum Role {
 
 model User {
   id               Int      @id @default(autoincrement())
+  uuid             String   @default(uuid()) @unique @db.Char(36)
   firstName        String
   lastName         String
   phoneNumber      String
   phoneCode        String
   email            String   @unique
   password         String
-  role             Role     @default(USER)
+  role             Int      @default(1)    // 1 = USER, 2 = DOCTOR
   bmdcNumber       String?  @unique
   isVerified       Boolean  @default(false)
-  isDoctorVarified Boolean  @default(false) // as you requested (0 in MySQL)
+  isDoctorVerified Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 }
