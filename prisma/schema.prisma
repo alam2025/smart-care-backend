@@ -7,15 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  DOCTOR
+}
+
 model User {
-  id          Int      @id @default(autoincrement())
-  firstName   String
-  lastName    String
-  phoneNumber String
-  phoneCode   String
-  email       String   @unique
-  password    String
-  isVerified  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  firstName        String
+  lastName         String
+  phoneNumber      String
+  phoneCode        String
+  email            String   @unique
+  password         String
+  role             Role     @default(USER)
+  bmdcNumber       String?  @unique
+  isVerified       Boolean  @default(false)
+  isDoctorVarified Boolean  @default(false) // as you requested (0 in MySQL)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
