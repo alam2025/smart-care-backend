@@ -46,7 +46,7 @@ export const signUp = async (req, res, next) => {
       phoneNumber,
       phoneCode,
       password,
-      role = "USER",    // can be "USER"/"DOCTOR" or 1/2
+      role = "USER", // can be "USER"/"DOCTOR" or 1/2
       bmdcNumber,
     } = req.body;
 
@@ -75,9 +75,10 @@ export const signUp = async (req, res, next) => {
 
     // If doctor ensure BMDC provided
     if (roleNumber === ROLE.DOCTOR && !bmdcNumber) {
-      return res
-        .status(400)
-        .json({ success: false, message: "BMDC number is required for doctors" });
+      return res.status(400).json({
+        success: false,
+        message: "BMDC number is required for doctors",
+      });
     }
 
     // Check email uniqueness
@@ -135,24 +136,30 @@ export const login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Email and password are required" });
+      return res.status(400).json({
+        success: false,
+        message: "Email and password are required",
+      });
     }
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid credentials" });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid credentials" });
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid credentials",
+      });
+    }
 
-    const token = generateToken(user);
+    const token = generateToken(user); // Ensure this uses JWT_SECRET and expires
 
     return res.status(200).json({
       success: true,
@@ -161,6 +168,7 @@ export const login = async (req, res, next) => {
       data: sanitizeUser(user),
     });
   } catch (error) {
+    console.error("Login error:", error.message);
     next(error);
   }
 };
